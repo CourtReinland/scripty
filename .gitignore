@@ -13,3 +13,5 @@ desktop/dist/
 desktop/build/icon.png
 desktop/build/*.iconset/
 desktop/build/icon.icns
+packaging/ffmpeg/
+packaging/scripty-backend.spec

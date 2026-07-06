@@ -27,8 +27,26 @@ let tearingDown = false;
 
 // ---- backend process ------------------------------------------------------
 
+// Path to the frozen backend executable inside a packaged .app.
+// extraResources maps packaging/dist/scripty-backend -> Resources/backend/scripty-backend
+// so the onedir's launcher lands at .../backend/scripty-backend/scripty-backend.
+function packagedBackendBin() {
+  return path.join(
+    process.resourcesPath, 'backend', 'scripty-backend', 'scripty-backend');
+}
+
+// Directory holding the bundled, relocatable ffmpeg/ffprobe inside a packaged .app.
+function packagedFfmpegDir() {
+  return path.join(process.resourcesPath, 'ffmpeg', 'bin');
+}
+
 function backendBin() {
-  return process.env.SCRIPTY_BACKEND_BIN || DEFAULT_BACKEND_BIN;
+  // Explicit override always wins (dev + packaged).
+  if (process.env.SCRIPTY_BACKEND_BIN) return process.env.SCRIPTY_BACKEND_BIN;
+  // Packaged app: use the frozen backend shipped in Resources.
+  if (app.isPackaged) return packagedBackendBin();
+  // Dev / unpackaged: use the project .venv entry point.
+  return DEFAULT_BACKEND_BIN;
 }
 
 function backendAlive() {
@@ -51,6 +69,13 @@ function findFreePort() {
 function spawnBackend(bin, port) {
   const env = { ...process.env };
   if (!env.SCRIPTY_HOME) env.SCRIPTY_HOME = path.join(os.homedir(), '.scripty');
+  // Packaged app: ffmpeg/ffprobe are invoked as bare names by the backend, so
+  // prepend the bundled, relocatable ffmpeg bin dir onto the child's PATH.
+  // Dev/unpackaged leaves PATH untouched so the system (Homebrew) ffmpeg is used.
+  if (app.isPackaged) {
+    const ffdir = packagedFfmpegDir();
+    env.PATH = ffdir + ':' + (env.PATH || '');
+  }
   const child = spawn(
     bin, ['serve', '--host', '127.0.0.1', '--port', String(port)],
     { env, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -135,6 +160,17 @@ function showErrorWindow(title, lines) {
 }
 
 function showBackendMissingWindow(bin) {
+  if (app.isPackaged) {
+    // The frozen backend should have been bundled into Resources by the build.
+    // If it's missing the .app is corrupt or was assembled without staging.
+    showErrorWindow('SCRIPTY BACKEND NOT FOUND', [
+      `The bundled backend is missing from this app:\n  ${bin}`,
+      'This copy of Scripty appears to be incomplete or damaged.',
+      'Re-download or rebuild the app, or set SCRIPTY_BACKEND_BIN to a scripty\n' +
+        'executable and relaunch:\n   SCRIPTY_BACKEND_BIN=/path/to/scripty open -a Scripty',
+    ]);
+    return;
+  }
   showErrorWindow('SCRIPTY BACKEND NOT FOUND', [
     `Expected the backend CLI at:\n  ${bin}`,
     'To fix, either:',

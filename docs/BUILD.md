@@ -102,15 +102,37 @@ cd desktop
 npm run dist       # -> desktop/dist/Scripty-<version>.dmg
 ```
 
-Same unsigned bundle, wrapped in a `.dmg` for hand-off. There is no notarization step; distribute at your own discretion.
+Same bundle as `npm run pack` above (a thin shell that runs the backend from your local `.venv`), wrapped in a `.dmg`. Good for your own machine; **not** portable to a Mac that lacks the venv or ffmpeg. For that, use the self-contained build below.
+
+---
+
+## Self-contained build (portable installer)
+
+`packaging/build_standalone.sh` produces a `.dmg` that runs on a **bare Mac** — no Python, no venv, no Homebrew, no ffmpeg required on the target machine. One command:
+
+```bash
+bash packaging/build_standalone.sh
+# -> desktop/dist/mac-arm64/Scripty.app   (~370 MB, self-contained)
+# -> desktop/dist/Scripty-<version>-arm64.dmg   (~160 MB)
+```
+
+It runs three stages:
+
+1. **`packaging/build_backend.sh`** — freezes the Python backend with **PyInstaller** (onedir) into `packaging/dist/scripty-backend/`. The whole `scripty` package is force-collected (`--collect-submodules scripty`) because the code uses lazy imports that PyInstaller's static analysis would otherwise miss, and the dashboard's `static/` assets are bundled with `--add-data`. Every emitted Mach-O is ad-hoc signed (required on Apple Silicon).
+2. **`packaging/bundle_ffmpeg.sh`** — copies your Homebrew `ffmpeg`/`ffprobe` and **relocates** their dylibs with `dylibbundler` into `packaging/ffmpeg/{bin,libs}`, rewriting load paths to `@executable_path/../libs` so there is no dependency on `/opt/homebrew`. Everything is ad-hoc signed. (Bundling your already-trusted Homebrew build avoids downloading an unknown static binary.)
+3. **`electron-builder`** copies both trees into the app via `extraResources`, and an `afterPack` hook (`desktop/build/afterpack-sign.js`) re-signs them inside the `.app` (electron-builder does not sign extraResources itself).
+
+When packaged, `main.js` runs `Contents/Resources/backend/scripty-backend/scripty-backend` and prepends `Contents/Resources/ffmpeg/bin` to the backend's `PATH`, so the bare-name `ffmpeg`/`ffprobe` calls resolve to the bundled binaries. **No Python source changes are needed** — the ffmpeg seam is purely `PATH`-based.
+
+The build outputs under `packaging/` are git-ignored (regenerated each run); only the build scripts are committed.
 
 ---
 
 ## How main.js finds and runs the backend
 
-The `.app` is a thin shell — it does not contain Python. At launch, `main.js`:
+A **dev** `.app` (from `npm run pack`) is a thin shell — it does not contain Python. A **self-contained** `.app` (from `packaging/build_standalone.sh`) bundles the frozen backend and ffmpeg inside `Contents/Resources/`. At launch, `main.js`:
 
-1. **Resolves the backend binary** from `SCRIPTY_BACKEND_BIN`, falling back to `/Users/blue/Projects/scripty/.venv/bin/scripty`. If that file doesn't exist, it opens an error window explaining how to fix it (install the backend, or set `SCRIPTY_BACKEND_BIN`).
+1. **Resolves the backend binary**: `SCRIPTY_BACKEND_BIN` wins if set; otherwise a packaged app uses the bundled `Contents/Resources/backend/scripty-backend/scripty-backend`, and a dev/unpackaged run falls back to `/Users/blue/Projects/scripty/.venv/bin/scripty`. If the resolved file doesn't exist, it opens an error window explaining how to fix it.
 2. **Finds a free port** by listening on `127.0.0.1:0`.
 3. **Spawns** `scripty serve --host 127.0.0.1 --port <port>`, inheriting the environment and piping backend logs to the console (prefixed `[backend]`).
 4. **Health-polls** `GET /api/projects` until it returns 200 (10-second timeout).

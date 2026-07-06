@@ -230,21 +230,35 @@ They land on disk under `$SCRIPTY_HOME/projects/<slug>/` (see [Project layout](#
 
 Scripty ships a macOS Electron shell that boots the Python backend on a free localhost port and opens the dashboard in a native window — including the four-panel **Compare Bay** view (`FILM | KNOWN SCRIPT | SCRIPTY'S SCRIPT | DESCRIBE`) with whole-window drag-and-drop.
 
+There are two build flavors:
+
 ```bash
 cd desktop
 npm install
 npm run smoke     # headless boot check -> prints "SMOKE OK"
-npm run pack      # unsigned .app at desktop/dist/mac-arm64/Scripty.app
-npm run dist      # .dmg installer
-```
 
-The app is **unsigned** and local-first. On first launch Gatekeeper will block it; right-click the app and choose **Open**, or clear the quarantine bit:
+# Dev build — thin shell; runs the backend from your local .venv
+npm run pack      # unsigned .app at desktop/dist/mac-arm64/Scripty.app
+npm run dist      # .dmg (needs Python venv + ffmpeg on the target machine)
+```
 
 ```bash
-xattr -dr com.apple.quarantine desktop/dist/mac-arm64/Scripty.app
+# Self-contained build — the one to hand to someone else.
+# Freezes the Python backend (PyInstaller) and bundles a relocated
+# ffmpeg/ffprobe, so the .app runs on a bare Mac with no Python,
+# no venv, and no Homebrew installed.
+bash packaging/build_standalone.sh   # -> desktop/dist/Scripty-<ver>-arm64.dmg
 ```
 
-`main.js` locates the backend via `SCRIPTY_BACKEND_BIN`, falling back to `/Users/blue/Projects/scripty/.venv/bin/scripty`. Full build instructions, the icon step, and how the backend is spawned are in [`docs/BUILD.md`](docs/BUILD.md).
+The self-contained `.dmg` on the [Releases page](https://github.com/CourtReinland/scripty/releases) needs **nothing** installed — download, drag to Applications, open. The only requirement is Apple Silicon.
+
+The app is **unsigned**, so on first launch Gatekeeper will block it; right-click the app and choose **Open**, or clear the quarantine bit:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Scripty.app
+```
+
+A packaged app resolves its backend and ffmpeg from inside the bundle (`Contents/Resources/backend` and `Contents/Resources/ffmpeg`); a dev build falls back to `SCRIPTY_BACKEND_BIN` or the local `.venv`. Full build details, the freeze/bundle steps, and the icon step are in [`docs/BUILD.md`](docs/BUILD.md).
 
 ---
 
