@@ -1,0 +1,38 @@
+{
+  "name": "scripty-desktop",
+  "productName": "Scripty",
+  "version": "0.1.0",
+  "description": "Desktop shell for Scripty, the machine script supervisor.",
+  "author": "Scripty",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "electron . --smoke",
+    "pack": "electron-builder --mac dir",
+    "dist": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "app.scripty.desktop",
+    "productName": "Scripty",
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "directories": {
+      "buildResources": "build"
+    },
+    "mac": {
+      "category": "public.app-category.video",
+      "identity": null,
+      "target": [
+        "dir"
+      ]
+    }
+  }
+}

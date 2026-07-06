@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.scripty/
+.demo-home/
+dist/
+build/
+desktop/node_modules/
+desktop/dist/
+!desktop/build/
+desktop/build/icon.png
+desktop/build/*.iconset/
+desktop/build/icon.icns

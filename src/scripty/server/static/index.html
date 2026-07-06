@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SCRIPTY &mdash; machine script supervisor</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/quad.css">
+</head>
+<body>
+  <header id="topbar">
+    <div class="slate">
+      <span class="mark">SCRIPTY</span>
+      <span class="sub">machine script supervisor</span>
+    </div>
+    <nav id="viewToggle" aria-label="view">
+      <button data-view="supervisor" class="active">Supervisor</button>
+      <button data-view="quad">Compare Bay</button>
+    </nav>
+    <div id="statusline" aria-live="polite"></div>
+  </header>
+
+  <main id="layout">
+    <aside id="left">
+      <section class="pickers">
+        <label for="projectSelect">Project</label>
+        <select id="projectSelect"></select>
+        <label for="passSelect">Pass</label>
+        <select id="passSelect"></select>
+      </section>
+      <video id="player" controls preload="metadata"></video>
+      <div id="passMeta" class="meta"></div>
+    </aside>
+
+    <section id="center">
+      <div class="panel-title">Shot log <span id="shotCount"></span></div>
+      <div id="shotTableWrap">
+        <table id="shotTable">
+          <thead>
+            <tr>
+              <th></th><th>#</th><th>TC</th><th>Label</th><th>Scale</th>
+              <th>Subject</th><th>Angle</th><th>Move</th><th>I/E</th>
+              <th>Location</th><th>Time</th><th>Characters</th>
+              <th>Action</th><th>Conf</th>
+            </tr>
+          </thead>
+          <tbody id="shotRows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside id="right">
+      <nav id="tabs">
+        <button data-tab="script" class="active">Script</button>
+        <button data-tab="describe">Describe</button>
+        <button data-tab="truth">Truth</button>
+        <button data-tab="lessons">Lessons</button>
+        <button data-tab="metrics">Metrics</button>
+        <button data-tab="bundle">Bundle</button>
+      </nav>
+      <div id="panels">
+        <div id="tab-script" class="tab active">
+          <iframe id="scriptFrame" sandbox="" title="rendered screenplay"></iframe>
+        </div>
+        <div id="tab-describe" class="tab"></div>
+        <div id="tab-truth" class="tab"></div>
+        <div id="tab-lessons" class="tab"></div>
+        <div id="tab-metrics" class="tab">
+          <canvas id="metricsCanvas" width="640" height="360"></canvas>
+          <div id="metricsNote" class="meta"></div>
+        </div>
+        <div id="tab-bundle" class="tab"></div>
+      </div>
+    </aside>
+  </main>
+
+  <main id="quadLayout"></main>
+
+  <script src="/static/app.js"></script>
+  <script src="/static/fountain.js"></script>
+  <script src="/static/quad.js"></script>
+</body>
+</html>
