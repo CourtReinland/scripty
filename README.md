@@ -139,6 +139,7 @@ The console entry point is `scripty` (defined in `pyproject.toml` as `scripty.cl
 | `scripty compare PROJECT_ID PASS_ID GENERATED_VIDEO` | Compare a generated video back against the original; revises describe prompts. |
 | `scripty demo` | Build a synthetic film and run a fully offline pass on it. |
 | `scripty log PASS_ID` | Print the classic cut log for a pass. |
+| `scripty export-canon PROJECT_ID -o FILE [--pass ID] [--tier S] …` | Export a pass as a director-bot canon work bundle (JSON). |
 
 Notes on the flags:
 

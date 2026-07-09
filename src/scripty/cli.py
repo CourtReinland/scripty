@@ -190,6 +190,47 @@ def log(pass_id: int) -> None:
     typer.echo(cut_log(db.shots_for_pass(pass_id), fps=fps))
 
 
+@app.command("export-canon")
+def export_canon(
+    project_id: int = typer.Argument(..., help="Scripty project id"),
+    out: Path = typer.Option(..., "--out", "-o", help="Output JSON path"),
+    pass_id: Optional[int] = typer.Option(
+        None, "--pass", help="Pass id (default: latest complete)"),
+    tier: str = typer.Option("UNRANKED", "--tier", help="S|A|B|C|UNRANKED"),
+    director: Optional[list[str]] = typer.Option(
+        None, "--director", help="Director name (repeatable)"),
+    genre: Optional[list[str]] = typer.Option(
+        None, "--genre", help="Genre tag (repeatable)"),
+    theme: str = typer.Option("", "--theme"),
+    logline: str = typer.Option("", "--logline"),
+    plot_summary: str = typer.Option("", "--plot-summary"),
+) -> None:
+    """Export a pass as a director-bot canon work bundle (JSON).
+
+    Import with: director-bot canon import <file>
+    """
+    from scripty.canon_export import build_canon_export, write_canon_export
+
+    db = _db()
+    try:
+        bundle = build_canon_export(
+            db, project_id, pass_id,
+            tier=tier,
+            directors=list(director or []),
+            genres=list(genre or []),
+            theme=theme,
+            logline=logline,
+            plot_summary=plot_summary,
+        )
+    except ValueError as exc:
+        raise _fail(str(exc))
+    path = write_canon_export(bundle, out)
+    n_shots = len(bundle.get("shot_moments") or [])
+    n_cards = len(bundle.get("scene_cards") or [])
+    typer.echo(f"wrote {path}  cards={n_cards} shots={n_shots} "
+               f"tier={tier}")
+
+
 def main() -> None:
     """Console-script entry point (pyproject [project.scripts])."""
     app()
