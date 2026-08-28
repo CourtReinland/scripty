@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scripty — fiction trainer</title>
+  <link rel="stylesheet" href="/static/write.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="mark">SCRIPTY</span>
+      <span class="sub">fiction trainer</span>
+    </div>
+    <p class="rule">You are the only judge. References stay private. Signals are notes, not scores.</p>
+    <a class="legacy" href="/film">Film supervisor (legacy)</a>
+  </header>
+
+  <main>
+    <section class="start card" id="startCard">
+      <h1>Start a session</h1>
+      <form id="startForm">
+        <div class="row">
+          <label>Genre desk
+            <select id="genre" name="genre" required></select>
+          </label>
+          <label>Tone
+            <input id="tone" name="tone" value="measured" maxlength="80">
+          </label>
+          <label>Length
+            <select id="length" name="length">
+              <option value="short" selected>short — complete piece</option>
+              <option value="medium">medium — chapter by chapter</option>
+              <option value="long">long — chapter by chapter</option>
+            </select>
+          </label>
+        </div>
+        <label>Story summary
+          <textarea id="summary" name="summary" rows="4" required></textarea>
+        </label>
+        <p class="hint" id="deskHint"></p>
+        <div class="desk-peek" id="deskPeek"></div>
+        <fieldset class="ref-box">
+          <legend>Optional reference for this desk</legend>
+          <p class="hint">Paste or upload cleaned chunks you have rights to. They shape the next challenger as abstract style notes. The text is never shown again, never quoted in a draft, and never exported.</p>
+          <div class="row">
+            <label>Kind
+              <select id="startRefKind">
+                <option value="user_excerpt">user excerpt</option>
+                <option value="public_domain">public domain</option>
+              </select>
+            </label>
+            <label>Label
+              <input id="startRefTitle" maxlength="80" placeholder="training chunk A">
+            </label>
+            <label>File
+              <input id="startRefFile" type="file" accept=".txt,.md,text/plain">
+            </label>
+          </div>
+          <textarea id="startRefText" rows="4" placeholder="Paste here, or choose a file. Cleared after start."></textarea>
+        </fieldset>
+        <button type="submit" id="startBtn">Write first draft</button>
+      </form>
+    </section>
+
+    <section class="session hidden" id="sessionPane">
+      <div class="session-bar">
+        <div>
+          <h2 id="sessionTitle">Session</h2>
+          <p class="hint" id="sessionMeta"></p>
+        </div>
+        <div class="actions">
+          <button type="button" id="generateBtn">Generate challenger</button>
+          <button type="button" id="nextBtn" class="ghost hidden">Next chapter</button>
+          <button type="button" id="newSessionBtn" class="ghost">New session</button>
+        </div>
+      </div>
+
+      <div class="compare">
+        <article class="draft card" id="champCard">
+          <header>
+            <h3>Champion</h3>
+            <p class="meta" id="champMeta"></p>
+          </header>
+          <pre class="prose" id="champText"></pre>
+        </article>
+        <article class="draft card" id="challCard">
+          <header>
+            <h3>Challenger</h3>
+            <p class="meta" id="challMeta"></p>
+          </header>
+          <pre class="prose" id="challText"></pre>
+          <div class="verdict hidden" id="verdictBar">
+            <button type="button" id="worseBtn" class="worse">Worse — keep champion</button>
+            <button type="button" id="betterBtn" class="better">Better — promote challenger</button>
+          </div>
+          <label class="note-label">Optional note for the desk
+            <input id="verdictNote" maxlength="240" placeholder="too explanatory / liked the colder opening">
+          </label>
+        </article>
+      </div>
+
+      <div class="side-by">
+        <section class="card">
+          <h3>This session’s champions</h3>
+          <ol id="history" class="history"></ol>
+          <h3 class="later">This desk’s champions</h3>
+          <ol id="deskHistory" class="history"></ol>
+        </section>
+        <section class="card">
+          <h3>Desk lessons</h3>
+          <ul id="lessons" class="lessons"></ul>
+          <p class="hint" id="refMeta"></p>
+          <form id="refForm" class="ref-form">
+            <h4>Add another private reference</h4>
+            <p class="hint">Upload or paste. We keep the bytes; you never see them replayed.</p>
+            <div class="row">
+              <label>Kind
+                <select id="refKind">
+                  <option value="user_excerpt">user excerpt</option>
+                  <option value="public_domain">public domain</option>
+                </select>
+              </label>
+              <label>Label
+                <input id="refTitle" maxlength="80">
+              </label>
+              <label>File
+                <input id="refFile" type="file" accept=".txt,.md,text/plain">
+              </label>
+            </div>
+            <textarea id="refText" rows="3"></textarea>
+            <button type="submit" class="ghost">Store on this desk</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <p id="status" class="status" role="status"></p>
+  </main>
+
+  <script src="/static/write.js"></script>
+</body>
+</html>

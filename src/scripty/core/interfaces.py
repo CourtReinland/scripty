@@ -35,11 +35,15 @@ class VisionProvider(Protocol):
 
 @runtime_checkable
 class TextBrain(Protocol):
-    """Plain text completion used for distilling lessons & polishing prompts."""
+    """Plain text completion used for distilling lessons, polishing prompts,
+    and (when temperature/seed are passed) drafting fiction."""
 
     name: str
 
-    def complete(self, system: str, user: str) -> str:
+    def complete(self, system: str, user: str, *,
+                 temperature: float | None = None,
+                 seed: int | None = None,
+                 max_tokens: int | None = None) -> str:
         ...
 
 

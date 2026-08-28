@@ -1,6 +1,26 @@
 # Usage
 
-Task-oriented walkthroughs for the common Scripty workflows. All commands assume the venv is active (`source .venv/bin/activate`) and ffmpeg is on your `PATH`.
+## Fiction trainer (current)
+
+```bash
+source .venv/bin/activate
+scripty write start -g thriller -t "tight" -l short \
+  -s "A courier has ninety minutes to deliver a key she has already lost." \
+  --ref-file ./my-cleaned-chunk.txt   # optional, never printed back
+scripty write generate 1
+scripty write judge 1 better --note "faster cut"
+scripty serve    # http://127.0.0.1:8787/
+```
+
+In the UI: pick a desk, set tone/length/summary, optionally upload a private chunk, write the first draft, generate a challenger, click Better or Worse. References never reappear as text. Signals are advisory. Live prose uses grok-4.6 / xhigh when `XAI_API_KEY` is set.
+
+Medium/long sessions write chapter 1 first; `scripty write next ID` (or **Next chapter** in the UI) starts the next unit after you are happy with the champion.
+
+---
+
+## Legacy film supervisor
+
+Task-oriented walkthroughs for the older film pipeline. ffmpeg must be on your `PATH`.
 
 ## Table of contents
 

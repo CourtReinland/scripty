@@ -1,6 +1,38 @@
 # Architecture
 
-Scripty is a pipeline of ten modules built around a small, frozen **core contract**. Every module that touches an external system (Claude, ffmpeg, whisper) sits behind a `Protocol` and ships a deterministic mock twin, so the whole system runs — and is fully tested — offline.
+The product surface is a **human-in-the-loop fiction trainer** (`scripty.write`). The film script-supervisor remains in the same package as a legacy pipeline.
+
+## Writer loop (current product)
+
+```
+start_session(genre, tone, length, summary)
+        │
+        ▼
+   generate()  → first draft becomes CHAMPION
+        │
+        │  roll seed + temperature + prompt mutation
+        ▼
+   generate()  → CHALLENGER (signals are display-only)
+        │
+        ▼
+   judge(better|worse)   # human is the only scorer
+        │
+        ├─ better → challenger is champion; old champion retired
+        └─ worse  → challenger discarded; champion unchanged
+        │
+        ▼
+   desk lesson distilled from the verdict → recalled on the next generate
+```
+
+Genre desks (`write/desks.py`) are style cards in our own words (short horror, literary, romance, thriller, slice-of-life, sci-fi, custom, plus fantasy and mystery). Optional references are `user_excerpt` or `public_domain` chunks the user uploads. They are stored privately and reduced to abstract style notes (pace, speech, opening move) before they touch a prompt. Raw reference sentences are scrubbed out of drafts and never returned by the API.
+
+Persistence is additive SQLite tables (`write_desks`, `write_sessions`, `write_drafts`, `write_verdicts`, `write_lessons`, `write_refs`) on the same database as the film stack. Live fiction uses `XaiBrain` (`grok-4.6`, `reasoning_effort=xhigh`, `https://api.x.ai/v1`) when `XAI_API_KEY` is set. `AnthropicBrain` remains for the legacy film/distill path. `MockBrain` is the pytest twin: it detects `SCRIPTY_WRITER` and emits seed-varied original prose. Challenger generates roll a new seed, a higher temperature, and a combined prose+plan mutation so randomness is exploration, not decoration.
+
+The dashboard at `/` is the pairwise compare UI. `/film` is the legacy supervisor.
+
+---
+
+The remainder of this document describes the **legacy film supervisor**: a pipeline of ten modules around a frozen core contract. Every module that touches an external system (Claude, ffmpeg, whisper) sits behind a `Protocol` and ships a deterministic mock twin.
 
 ## Table of contents
 

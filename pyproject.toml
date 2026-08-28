@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scripty"
-version = "0.1.0"
-description = "A machine script supervisor: watches films, logs cuts, writes screenplays, learns from corrections"
+version = "0.2.0"
+description = "A human-in-the-loop fiction trainer: pairwise drafts, human as only judge"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.110",
