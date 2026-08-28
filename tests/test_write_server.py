@@ -30,7 +30,11 @@ def test_writer_shell_is_home(client: TestClient) -> None:
 def test_http_loop_first_draft_better_worse_and_desk_lessons(
         client: TestClient) -> None:
     desks = client.get("/api/write/desks").json()
-    assert any(d["slug"] == "horror" for d in desks)
+    slugs = {d["slug"] for d in desks}
+    assert {"horror", "literary", "romance", "thriller",
+            "slice_of_life", "science_fiction", "custom"} <= slugs
+    peek = client.get("/api/write/desks/thriller").json()
+    assert peek["desk"]["slug"] == "thriller"
 
     first = client.post("/api/write/sessions", json={
         "genre": "horror",
@@ -83,15 +87,36 @@ def test_http_rejects_bad_genre_and_missing_session(client: TestClient) -> None:
     assert client.post("/api/write/sessions/999/generate").status_code == 404
 
 
-def test_http_stores_user_reference(client: TestClient) -> None:
+def test_http_stores_user_reference_without_echoing_text(client: TestClient) -> None:
+    phrase = "The violet kettle whistled twice at dawn while the porch cats argued."
     res = client.post("/api/write/refs", json={
         "genre": "horror",
         "kind": "user_excerpt",
         "title": "my paragraph",
-        "text": "I wrote this myself in 2026.",
+        "text": phrase,
     })
     assert res.status_code == 200
-    assert res.json()["kind"] == "user_excerpt"
+    body = res.json()
+    assert body["kind"] == "user_excerpt"
+    assert "text" not in body
+    assert phrase not in str(body)
+    started = client.post("/api/write/sessions", json={
+        "genre": "horror",
+        "tone": "cold",
+        "length": "short",
+        "summary": "A keeper waits on the stairs.",
+        "draft": True,
+        "reference_text": phrase,
+        "reference_title": "start chunk",
+    }).json()
+    dumped = str(started)
+    assert phrase not in dumped
+    assert "violet kettle" not in dumped
+    assert started["refs"]
+    assert "text" not in started["refs"][0]
+    html = client.get("/").text
+    assert "Optional reference" in html
+    assert "never shown again" in html
     assert client.post("/api/write/refs", json={
         "genre": "horror", "kind": "stolen_novel",
         "title": "no", "text": "no",

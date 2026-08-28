@@ -22,6 +22,17 @@
     return body;
   }
 
+  function readFile(input) {
+    return new Promise((resolve) => {
+      const file = input && input.files && input.files[0];
+      if (!file) { resolve(""); return; }
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => resolve("");
+      reader.readAsText(file);
+    });
+  }
+
   function fillDesks(desks) {
     state.desks = desks;
     const sel = $("genre");
@@ -32,14 +43,24 @@
       opt.textContent = d.name;
       sel.appendChild(opt);
     });
-    const prefer = desks.find((d) => d.slug === "horror") || desks[0];
-    if (prefer) sel.value = prefer.slug;
+    if (desks[0]) sel.value = desks[0].slug;
     updateHint();
   }
 
   function updateHint() {
     const desk = state.desks.find((d) => d.slug === $("genre").value);
     $("deskHint").textContent = desk ? (desk.hint + " " + desk.style_card) : "";
+    if (!desk) return;
+    api("/api/write/desks/" + encodeURIComponent(desk.slug)).then((info) => {
+      const nLessons = (info.lessons || []).length;
+      const nHist = (info.history || []).length;
+      const nRefs = (info.refs || []).length;
+      const notes = (info.refs || []).flatMap((r) => r.notes || []).slice(0, 3);
+      $("deskPeek").textContent =
+        nLessons + " lessons · " + nHist + " desk champions · " +
+        nRefs + " private refs" +
+        (notes.length ? " · " + notes.join("; ") : "");
+    }).catch(() => { $("deskPeek").textContent = ""; });
   }
 
   function words(draft) {
@@ -55,6 +76,21 @@
     return bits.join(" · ");
   }
 
+  function fillList(el, rows, empty) {
+    el.innerHTML = "";
+    (rows || []).forEach((d) => {
+      const li = document.createElement("li");
+      li.textContent = "#" + d.id + " · " + d.role + " · seed " + d.seed +
+        (d.mutation ? " · " + d.mutation : "");
+      el.appendChild(li);
+    });
+    if (!el.children.length) {
+      const li = document.createElement("li");
+      li.textContent = empty;
+      el.appendChild(li);
+    }
+  }
+
   function render(view) {
     state.view = view;
     const s = view.session;
@@ -68,25 +104,16 @@
     $("champText").textContent = (view.champion && view.champion.text) || "No champion yet.";
     $("champMeta").textContent = words(view.champion);
     $("challText").textContent = (view.challenger && view.challenger.text) ||
-      "Generate a challenger to compare. Randomness is rolled every time.";
+      "Generate a challenger to explore a different plan. Randomness is the search.";
     $("challMeta").textContent = words(view.challenger);
     $("verdictBar").classList.toggle("hidden", !view.challenger);
     $("nextBtn").classList.toggle("hidden", s.unit_kind === "story");
     $("generateBtn").textContent = view.champion ? "Generate challenger" : "Write first draft";
 
-    const hist = $("history");
-    hist.innerHTML = "";
-    (view.history || []).slice().reverse().forEach((d) => {
-      const li = document.createElement("li");
-      li.textContent = "#" + d.id + " · " + d.role + " · seed " + d.seed +
-        (d.mutation ? " · " + d.mutation : "");
-      hist.appendChild(li);
-    });
-    if (!hist.children.length) {
-      const li = document.createElement("li");
-      li.textContent = "The current champion will collect here as you promote.";
-      hist.appendChild(li);
-    }
+    fillList($("history"), (view.history || []).slice().reverse(),
+      "The current champion will collect here as you promote.");
+    fillList($("deskHistory"), view.desk_history || [],
+      "This desk has no earlier champions yet.");
 
     const ul = $("lessons");
     ul.innerHTML = "";
@@ -100,6 +127,11 @@
       li.textContent = "Verdicts on this desk become lessons the next generate can recall.";
       ul.appendChild(li);
     }
+    const refs = view.refs || [];
+    const notes = refs.flatMap((r) => r.notes || []);
+    $("refMeta").textContent = refs.length
+      ? refs.length + " private reference(s) on this desk. Notes: " + notes.join("; ")
+      : "No private references on this desk yet.";
   }
 
   async function startSession(ev) {
@@ -107,16 +139,27 @@
     $("startBtn").disabled = true;
     status("Writing first draft…");
     try {
+      let refText = $("startRefText").value;
+      const fileText = await readFile($("startRefFile"));
+      if (fileText) refText = fileText;
+      const body = {
+        genre: $("genre").value,
+        tone: $("tone").value,
+        length: $("length").value,
+        summary: $("summary").value,
+        draft: true,
+      };
+      if (refText && refText.trim()) {
+        body.reference_text = refText;
+        body.reference_title = $("startRefTitle").value || "session upload";
+        body.reference_kind = $("startRefKind").value;
+      }
       const view = await api("/api/write/sessions", {
         method: "POST",
-        body: JSON.stringify({
-          genre: $("genre").value,
-          tone: $("tone").value,
-          length: $("length").value,
-          summary: $("summary").value,
-          draft: true,
-        }),
+        body: JSON.stringify(body),
       });
+      $("startRefText").value = "";
+      $("startRefFile").value = "";
       render(view);
       status("First draft is the champion. Generate a challenger when ready.");
     } catch (err) {
@@ -129,7 +172,7 @@
   async function generate() {
     if (!state.view) return;
     $("generateBtn").disabled = true;
-    status("Generating with a fresh seed / temperature / mutation…");
+    status("Exploring: new seed, temperature, and beat plan…");
     try {
       const view = await api("/api/write/sessions/" + state.view.session.id + "/generate", {
         method: "POST",
@@ -180,20 +223,32 @@
   async function addRef(ev) {
     ev.preventDefault();
     if (!state.view) return;
+    let text = $("refText").value;
+    const fileText = await readFile($("refFile"));
+    if (fileText) text = fileText;
+    if (!text.trim()) {
+      status("Paste or upload a reference first.", true);
+      return;
+    }
     try {
-      await api("/api/write/refs", {
+      const stored = await api("/api/write/refs", {
         method: "POST",
         body: JSON.stringify({
           genre: state.view.session.genre,
           kind: $("refKind").value,
-          title: $("refTitle").value,
-          text: $("refText").value,
+          title: $("refTitle").value || "desk upload",
+          text: text,
         }),
       });
+      if (stored.text) {
+        status("Server echoed reference text — refusing to display it.", true);
+        return;
+      }
       $("refText").value = "";
+      $("refFile").value = "";
       const view = await api("/api/write/sessions/" + state.view.session.id);
       render(view);
-      status("Reference stored on this desk. Next generate can recall it.");
+      status("Reference stored privately. Next generate uses style notes only.");
     } catch (err) {
       status(err.message, true);
     }
@@ -204,6 +259,7 @@
     $("sessionPane").classList.add("hidden");
     $("startCard").classList.remove("hidden");
     status("");
+    updateHint();
   }
 
   $("startForm").addEventListener("submit", startSession);

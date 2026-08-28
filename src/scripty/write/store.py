@@ -170,7 +170,10 @@ def add_ref(db: Database, *, desk_id: int, kind: str,
             "kind must be style_card, user_excerpt, or public_domain")
     rid = db.insert("write_refs", desk_id=desk_id, kind=kind,
                     title=title, text=text)
-    db.emit("write_ref_added", {"ref_id": rid, "desk_id": desk_id, "kind": kind})
+    db.emit("write_ref_added", {
+        "ref_id": rid, "desk_id": desk_id, "kind": kind,
+        "chars": len(text),
+    })
     return rid
 
 
@@ -178,3 +181,22 @@ def refs_for_desk(db: Database, desk_id: int) -> list[dict]:
     return db.rows(
         "SELECT * FROM write_refs WHERE desk_id = ? ORDER BY id",
         (desk_id,))
+
+
+def user_ref_texts(db: Database, desk_id: int) -> list[str]:
+    return [
+        str(r["text"]) for r in refs_for_desk(db, desk_id)
+        if r.get("kind") in ("user_excerpt", "public_domain") and r.get("text")
+    ]
+
+
+def champions_for_desk(db: Database, desk_id: int, limit: int = 24) -> list[dict]:
+    """Champion / retired drafts across sessions on this desk (our prose)."""
+    return db.rows(
+        "SELECT d.id, d.session_id, d.role, d.seed, d.temperature, d.mutation, "
+        "d.signals, d.created_at, d.unit_index "
+        "FROM write_drafts d "
+        "JOIN write_sessions s ON s.id = d.session_id "
+        "WHERE s.desk_id = ? AND d.role IN ('champion', 'retired') "
+        "ORDER BY d.id DESC LIMIT ?",
+        (desk_id, limit), "write_drafts")

@@ -112,7 +112,8 @@ def _print_session(view: dict) -> None:
 @write_app.command("start")
 def write_start(
     genre: str = typer.Option(..., "--genre", "-g",
-                              help="horror, literary, science_fiction, fantasy, mystery, romance"),
+                              help="horror, literary, romance, thriller, "
+                                   "slice_of_life, science_fiction, custom, …"),
     tone: str = typer.Option("measured", "--tone", "-t"),
     length: str = typer.Option("short", "--length", "-l",
                                help="short (complete piece) | medium | long (chapters)"),
@@ -120,14 +121,26 @@ def write_start(
     provider: Optional[str] = typer.Option(None, "--provider"),
     draft: bool = typer.Option(True, "--draft/--no-draft",
                                help="Generate the first draft immediately"),
+    ref_file: Optional[Path] = typer.Option(
+        None, "--ref-file", help="Private training chunk (never printed back)"),
+    ref_kind: str = typer.Option("user_excerpt", "--ref-kind"),
 ) -> None:
     """Open a session on a genre desk and (by default) write the first draft."""
     from scripty.write import generate, start_session
 
+    ref_text = None
+    if ref_file is not None:
+        path = Path(ref_file).expanduser()
+        if not path.is_file():
+            raise _fail(f"file not found: {path}")
+        ref_text = path.read_text(encoding="utf-8")
     db = _db()
     try:
         view = start_session(db, genre=genre, tone=tone, length=length,
-                             summary=summary, provider=provider)
+                             summary=summary, provider=provider,
+                             reference_text=ref_text,
+                             reference_title=ref_file.name if ref_file else None,
+                             reference_kind=ref_kind)
         if draft:
             view = generate(db, int(view["session"]["id"]))
     except ValueError as exc:

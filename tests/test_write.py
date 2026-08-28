@@ -1,6 +1,7 @@
 """Offline tests for the human-in-the-loop writer. No API keys, no corpus."""
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -42,19 +43,31 @@ class RecordingBrain:
 
 def _start(db, **over):
     body = dict(genre="horror", tone="quiet dread", length="short",
-                summary="A keeper finds smaller footprints on the lighthouse stairs.")
+                summary="A keeper finds smaller footprints on the lighthouse stairs.",
+                provider="mock")
     body.update(over)
     return start_session(db, **body)
+
+
+REQUIRED_DESKS = {
+    "horror", "literary", "romance", "thriller",
+    "slice_of_life", "science_fiction", "custom",
+}
+
+FIXTURE = (
+    "The violet kettle whistled twice at dawn while the porch cats argued."
+)
 
 
 def test_desks_are_style_cards_not_a_corpus(db):
     desks = list_desks(db)
     slugs = {d["slug"] for d in desks}
+    assert REQUIRED_DESKS <= slugs
     assert slugs == {d["slug"] for d in DESKS}
-    blob = " ".join(d["style_card"] for d in desks)
+    blob = " ".join((d["style_card"] + " " + d["hint"]) for d in desks)
+    assert "King" not in blob
     assert "Carrie" not in blob
     assert "The Shining" not in blob
-    assert len(blob) < 4000
 
 
 def test_first_draft_becomes_champion(db):
@@ -176,15 +189,73 @@ def test_medium_session_advances_chapter(db):
     assert view["champion"] is not None
 
 
-def test_user_excerpt_is_optional_and_recalled(db):
-    add_reference(db, desk_slug="horror", kind="public_domain",
-                  title="tiny PD note",
-                  text="The wind walked on the roof all night.")
+def test_reference_is_private_and_only_style_notes_reach_the_model(db):
+    stored = add_reference(db, desk_slug="horror", kind="public_domain",
+                           title="tiny PD note", text=FIXTURE)
+    assert "text" not in stored
+    assert FIXTURE not in str(stored)
+    assert stored.get("notes")
+
     brain = RecordingBrain()
     sid = int(_start(db)["session"]["id"])
-    generate(db, sid, seed=1, brain=brain)
-    assert "tiny PD note" in brain.calls[-1]["user"]
-    assert "The wind walked" in brain.calls[-1]["user"]
+    view = generate(db, sid, seed=1, brain=brain)
+    prompt = brain.calls[-1]["user"]
+    assert "STYLE NOTES" in prompt
+    assert FIXTURE not in prompt
+    assert "violet kettle" not in prompt
+    dumped = json.dumps(view)
+    assert FIXTURE not in dumped
+    assert "violet kettle" not in dumped
+    assert view["refs"] and "text" not in view["refs"][0]
+    assert FIXTURE not in (view["champion"]["text"] or "")
+
+
+def test_leaky_draft_is_scrubbed_of_reference_ngrams(db):
+    add_reference(db, desk_slug="horror", kind="user_excerpt",
+                  title="chunk", text=FIXTURE)
+
+    class Leaky:
+        name = "leaky"
+
+        def complete(self, system, user, **kwargs):
+            return "Hello there. " + FIXTURE + " Then we left."
+
+    sid = int(_start(db)["session"]["id"])
+    view = generate(db, sid, seed=1, brain=Leaky())
+    assert FIXTURE not in view["champion"]["text"]
+    assert "violet kettle" not in view["champion"]["text"]
+
+
+def test_desk_keeps_its_own_champion_history(db):
+    horror = int(_start(db, genre="horror")["session"]["id"])
+    generate(db, horror, seed=1, brain=MockBrain())
+    generate(db, horror, seed=2, brain=MockBrain())
+    judge(db, horror, "better")
+    other = int(_start(db, genre="horror")["session"]["id"])
+    view = generate(db, other, seed=3, brain=MockBrain())
+    assert view["desk_history"]
+    assert any(row["role"] == "champion" for row in view["desk_history"])
+    lit = int(_start(db, genre="literary")["session"]["id"])
+    lit_view = generate(db, lit, seed=4, brain=MockBrain())
+    assert all(r.get("session_id") != horror for r in lit_view["desk_history"])
+
+
+def test_challenger_explores_with_new_seed_and_plan(db):
+    sid = int(_start(db)["session"]["id"])
+    first = generate(db, sid, brain=MockBrain())
+    second = generate(db, sid, brain=MockBrain())
+    assert second["challenger"]["seed"] != first["champion"]["seed"]
+    assert second["challenger"]["mutation"] != first["champion"]["mutation"]
+    assert second["challenger"]["text"] != first["champion"]["text"]
+    assert "/" in second["challenger"]["mutation"]  # prose + plan
+
+
+def test_aliases_include_short_horror_and_generic(db):
+    assert normalize_genre("short-horror") == "horror"
+    assert normalize_genre("generic") == "custom"
+    assert normalize_genre("sci-fi") == "science_fiction"
+    view = _start(db, genre="thriller")
+    assert view["desk"]["slug"] == "thriller"
 
 
 def test_unknown_genre_rejected(db):

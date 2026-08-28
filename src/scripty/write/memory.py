@@ -93,23 +93,37 @@ def format_lessons(rows: list[dict]) -> str:
     return "\n".join(lines)
 
 
-def format_refs(rows: list[dict], *, max_chars: int = 1200) -> str:
-    """Style cards + user/PD excerpts. Never treat this as a novel dump."""
-    usable = [r for r in rows if r.get("kind") in (
-        "style_card", "user_excerpt", "public_domain") and r.get("text")]
-    if not usable:
-        return ""
-    lines = [
-        "REFERENCE NOTES (our style card and/or text the user supplied",
-        "with rights, or public-domain. Absorb rhythm; do not copy):",
-    ]
-    budget = max_chars
-    for row in usable:
-        chunk = str(row.get("text") or "").strip()
-        if len(chunk) > budget:
-            chunk = chunk[:budget] + "…"
-        budget -= len(chunk)
-        lines.append(f"[{row.get('kind')}] {row.get('title')}: {chunk}")
-        if budget <= 0:
-            break
-    return "\n".join(lines)
+def format_style_notes(rows: list[dict]) -> str:
+    """Abstract notes only. Raw reference sentences never enter a prompt."""
+    from scripty.write.style import digest, digest_block
+
+    digests = []
+    for row in rows:
+        if row.get("kind") not in ("user_excerpt", "public_domain"):
+            continue
+        text = str(row.get("text") or "").strip()
+        if text:
+            digests.append(digest(text))
+    return digest_block(digests)
+
+
+def public_refs(rows: list[dict]) -> list[dict]:
+    """Safe metadata for UI/API — no text, no excerpts."""
+    from scripty.write.style import digest
+
+    out: list[dict] = []
+    for row in rows:
+        kind = row.get("kind")
+        if kind == "style_card":
+            continue  # style cards already live on the desk row
+        item = {
+            "id": row.get("id"),
+            "kind": kind,
+            "title": row.get("title") or "desk reference",
+            "char_count": len(str(row.get("text") or "")),
+        }
+        text = str(row.get("text") or "").strip()
+        if text:
+            item["notes"] = digest(text).get("notes") or []
+        out.append(item)
+    return out

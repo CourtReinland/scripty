@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 from scripty.core.db import Database
 from scripty.write import (
-    add_reference, advance, generate, judge, list_desks, list_sessions,
-    session_view, start_session,
+    add_reference, advance, desk_view, generate, judge, list_desks,
+    list_sessions, session_view, start_session,
 )
 
 
@@ -20,6 +20,9 @@ class SessionIn(BaseModel):
     summary: str
     provider: Optional[str] = None
     draft: bool = True
+    reference_text: Optional[str] = None
+    reference_title: Optional[str] = None
+    reference_kind: str = "user_excerpt"
 
 
 class JudgeIn(BaseModel):
@@ -41,6 +44,13 @@ def write_router(db: Database) -> APIRouter:
     def desks() -> list[dict]:
         return list_desks(db)
 
+    @router.get("/desks/{genre}")
+    def one_desk(genre: str) -> dict:
+        try:
+            return desk_view(db, genre)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail=str(exc)) from exc
+
     @router.get("/sessions")
     def sessions() -> list[dict]:
         return list_sessions(db)
@@ -50,7 +60,10 @@ def write_router(db: Database) -> APIRouter:
         try:
             view = start_session(
                 db, genre=body.genre, tone=body.tone, length=body.length,
-                summary=body.summary, provider=body.provider)
+                summary=body.summary, provider=body.provider,
+                reference_text=body.reference_text,
+                reference_title=body.reference_title,
+                reference_kind=body.reference_kind)
             if body.draft:
                 view = generate(db, int(view["session"]["id"]))
             return view

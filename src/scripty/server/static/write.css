@@ -93,4 +93,8 @@ button:disabled { opacity: 0.5; cursor: wait; }
 .history, .lessons { margin: 0; padding-left: 1.1rem; }
 .history li, .lessons li { margin: 0.35rem 0; }
 .ref-form { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--line); }
+.ref-box { border: 1px dashed var(--line); border-radius: 6px; padding: 0.8rem; margin: 1rem 0; }
+.ref-box legend { padding: 0 0.3rem; color: var(--muted); font-size: 0.85rem; }
+.desk-peek { color: var(--muted); font-size: 0.85rem; margin: 0.4rem 0 0.8rem; min-height: 1.2em; }
+.later { margin-top: 1rem; }
 .status { color: var(--muted); min-height: 1.4em; }

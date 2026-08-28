@@ -313,6 +313,6 @@ def get_provider(name: str | None = None) -> VisionProvider:
     resolved = (name or config.default_provider()).strip().lower()
     if resolved == "anthropic":
         return AnthropicVision()
-    if resolved == "mock":
+    if resolved in ("mock", "xai", "grok"):
         return MockVision()
     raise ValueError(f"unknown vision provider: {resolved!r}")

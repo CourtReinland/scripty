@@ -4,14 +4,15 @@
 
 ```bash
 source .venv/bin/activate
-scripty write start -g horror -t "quiet dread" -l short \
-  -s "A lighthouse keeper finds smaller footprints on the stairs each morning."
+scripty write start -g thriller -t "tight" -l short \
+  -s "A courier has ninety minutes to deliver a key she has already lost." \
+  --ref-file ./my-cleaned-chunk.txt   # optional, never printed back
 scripty write generate 1
-scripty write judge 1 better --note "colder"
+scripty write judge 1 better --note "faster cut"
 scripty serve    # http://127.0.0.1:8787/
 ```
 
-In the UI: start a session, read the champion, generate a challenger, click Better or Worse. Signals on the cards are advisory. Paste only public-domain text or excerpts you have rights to.
+In the UI: pick a desk, set tone/length/summary, optionally upload a private chunk, write the first draft, generate a challenger, click Better or Worse. References never reappear as text. Signals are advisory. Live prose uses grok-4.6 / xhigh when `XAI_API_KEY` is set.
 
 Medium/long sessions write chapter 1 first; `scripty write next ID` (or **Next chapter** in the UI) starts the next unit after you are happy with the champion.
 

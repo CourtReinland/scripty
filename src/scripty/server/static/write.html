@@ -12,7 +12,7 @@
       <span class="mark">SCRIPTY</span>
       <span class="sub">fiction trainer</span>
     </div>
-    <p class="rule">You are the only judge. Signals are notes, not scores.</p>
+    <p class="rule">You are the only judge. References stay private. Signals are notes, not scores.</p>
     <a class="legacy" href="/film">Film supervisor (legacy)</a>
   </header>
 
@@ -22,10 +22,10 @@
       <form id="startForm">
         <div class="row">
           <label>Genre desk
-            <select id="genre" name="genre"></select>
+            <select id="genre" name="genre" required></select>
           </label>
           <label>Tone
-            <input id="tone" name="tone" value="quiet dread" maxlength="80">
+            <input id="tone" name="tone" value="measured" maxlength="80">
           </label>
           <label>Length
             <select id="length" name="length">
@@ -36,9 +36,29 @@
           </label>
         </div>
         <label>Story summary
-          <textarea id="summary" name="summary" rows="5" required>A lighthouse keeper finds a second set of footprints on the stairs every morning, always one size smaller than his own.</textarea>
+          <textarea id="summary" name="summary" rows="4" required></textarea>
         </label>
         <p class="hint" id="deskHint"></p>
+        <div class="desk-peek" id="deskPeek"></div>
+        <fieldset class="ref-box">
+          <legend>Optional reference for this desk</legend>
+          <p class="hint">Paste or upload cleaned chunks you have rights to. They shape the next challenger as abstract style notes. The text is never shown again, never quoted in a draft, and never exported.</p>
+          <div class="row">
+            <label>Kind
+              <select id="startRefKind">
+                <option value="user_excerpt">user excerpt</option>
+                <option value="public_domain">public domain</option>
+              </select>
+            </label>
+            <label>Label
+              <input id="startRefTitle" maxlength="80" placeholder="training chunk A">
+            </label>
+            <label>File
+              <input id="startRefFile" type="file" accept=".txt,.md,text/plain">
+            </label>
+          </div>
+          <textarea id="startRefText" rows="4" placeholder="Paste here, or choose a file. Cleared after start."></textarea>
+        </fieldset>
         <button type="submit" id="startBtn">Write first draft</button>
       </form>
     </section>
@@ -82,15 +102,18 @@
 
       <div class="side-by">
         <section class="card">
-          <h3>Champion history</h3>
+          <h3>This session’s champions</h3>
           <ol id="history" class="history"></ol>
+          <h3 class="later">This desk’s champions</h3>
+          <ol id="deskHistory" class="history"></ol>
         </section>
         <section class="card">
           <h3>Desk lessons</h3>
           <ul id="lessons" class="lessons"></ul>
+          <p class="hint" id="refMeta"></p>
           <form id="refForm" class="ref-form">
-            <h4>Add a reference you have rights to</h4>
-            <p class="hint">Public-domain text or a short excerpt you own. Not a living author’s novel.</p>
+            <h4>Add another private reference</h4>
+            <p class="hint">Upload or paste. We keep the bytes; you never see them replayed.</p>
             <div class="row">
               <label>Kind
                 <select id="refKind">
@@ -98,11 +121,14 @@
                   <option value="public_domain">public domain</option>
                 </select>
               </label>
-              <label>Title
-                <input id="refTitle" required maxlength="80">
+              <label>Label
+                <input id="refTitle" maxlength="80">
+              </label>
+              <label>File
+                <input id="refFile" type="file" accept=".txt,.md,text/plain">
               </label>
             </div>
-            <textarea id="refText" rows="4" required></textarea>
+            <textarea id="refText" rows="3"></textarea>
             <button type="submit" class="ghost">Store on this desk</button>
           </form>
         </section>

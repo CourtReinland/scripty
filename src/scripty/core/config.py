@@ -38,6 +38,9 @@ def project_dir(slug: str) -> Path:
 
 VISION_MODEL = os.environ.get("SCRIPTY_VISION_MODEL", "claude-opus-4-8")
 TEXT_MODEL = os.environ.get("SCRIPTY_TEXT_MODEL", "claude-opus-4-8")
+WRITER_MODEL = os.environ.get("SCRIPTY_WRITER_MODEL", "grok-4.6")
+WRITER_REASONING_EFFORT = os.environ.get("SCRIPTY_WRITER_REASONING_EFFORT", "xhigh")
+XAI_BASE_URL = os.environ.get("XAI_BASE_URL", "https://api.x.ai/v1")
 
 SCENE_THRESHOLD = float(os.environ.get("SCRIPTY_SCENE_THRESHOLD", "0.30"))
 FRAMES_PER_SHOT = int(os.environ.get("SCRIPTY_FRAMES_PER_SHOT", "3"))
@@ -58,11 +61,29 @@ def _anthropic_credentials_present() -> bool:
     return creds.is_dir() and any(creds.iterdir())
 
 
+def _xai_credentials_present() -> bool:
+    return bool(os.environ.get("XAI_API_KEY"))
+
+
 def default_provider() -> str:
-    """'anthropic' when credentials are resolvable, else 'mock'."""
+    """Film/vision default: Anthropic when credentials resolve, else mock.
+
+    ``SCRIPTY_PROVIDER`` still forces a name. Writer prose uses
+    ``default_writer_provider()`` so an xAI key does not break vision.
+    """
     forced = os.environ.get("SCRIPTY_PROVIDER")
     if forced:
         return forced
+    return "anthropic" if _anthropic_credentials_present() else "mock"
+
+
+def default_writer_provider() -> str:
+    """Live fiction: xAI grok-4.6 when ``XAI_API_KEY`` is set."""
+    forced = os.environ.get("SCRIPTY_PROVIDER")
+    if forced:
+        return forced
+    if _xai_credentials_present():
+        return "xai"
     return "anthropic" if _anthropic_credentials_present() else "mock"
 
 

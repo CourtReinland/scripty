@@ -6,6 +6,7 @@ sibling modules are still being built.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -15,7 +16,7 @@ import pytest
 from typer.testing import CliRunner
 
 from scripty import cli, pipeline
-from scripty.brain import AnthropicBrain, MockBrain, get_brain
+from scripty.brain import AnthropicBrain, MockBrain, XaiBrain, get_brain
 from scripty.core import config
 from scripty.core.db import Database
 from scripty.core.models import (
@@ -198,6 +199,7 @@ def test_mock_brain_is_deterministic():
 def test_get_brain_resolution(monkeypatch):
     assert get_brain("mock").name == "mock"
     assert get_brain("anthropic").name == "anthropic"
+    assert get_brain("xai").name == "xai"
     monkeypatch.setenv("SCRIPTY_PROVIDER", "mock")
     assert get_brain().name == "mock"
     with pytest.raises(ValueError):
@@ -237,6 +239,43 @@ def test_anthropic_brain_writer_path_passes_temperature():
     assert kwargs["max_tokens"] == 4000
     assert "thinking" not in kwargs
     assert "seed 7" in kwargs["messages"][0]["content"]
+
+
+def test_xai_brain_pins_grok_46_and_xhigh(monkeypatch):
+    captured: dict = {}
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "choices": [{"message": {"content": "a grok draft"}}],
+            }).encode()
+
+    def fake_urlopen(request, timeout=180):
+        captured["url"] = request.full_url
+        captured["body"] = json.loads(request.data.decode())
+        captured["auth"] = request.get_header("Authorization")
+        return FakeResp()
+
+    monkeypatch.setenv("XAI_API_KEY", "test-key")
+    monkeypatch.setattr("scripty.brain.urllib.request.urlopen", fake_urlopen)
+    brain = XaiBrain()
+    assert brain.model == "grok-4.6"
+    assert brain.reasoning_effort == "xhigh"
+    out = brain.complete("sys", "user", temperature=0.9, seed=3, max_tokens=111)
+    assert out == "a grok draft"
+    assert captured["url"].endswith("/chat/completions")
+    assert captured["url"].startswith("https://api.x.ai/v1")
+    assert captured["body"]["model"] == "grok-4.6"
+    assert captured["body"]["reasoning_effort"] == "xhigh"
+    assert captured["body"]["temperature"] == 0.9
+    assert "seed 3" in captured["body"]["messages"][1]["content"]
+    assert captured["auth"] == "Bearer test-key"
 
 
 def test_anthropic_brain_wraps_typed_errors():

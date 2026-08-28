@@ -24,9 +24,9 @@ start_session(genre, tone, length, summary)
    desk lesson distilled from the verdict → recalled on the next generate
 ```
 
-Genre desks (`write/desks.py`) are style cards in our own words. Optional references are `user_excerpt` or `public_domain` text the user supplies — never a vendored living-author corpus.
+Genre desks (`write/desks.py`) are style cards in our own words (short horror, literary, romance, thriller, slice-of-life, sci-fi, custom, plus fantasy and mystery). Optional references are `user_excerpt` or `public_domain` chunks the user uploads. They are stored privately and reduced to abstract style notes (pace, speech, opening move) before they touch a prompt. Raw reference sentences are scrubbed out of drafts and never returned by the API.
 
-Persistence is additive SQLite tables (`write_desks`, `write_sessions`, `write_drafts`, `write_verdicts`, `write_lessons`, `write_refs`) on the same database as the film stack. The writer reuses `TextBrain` (`AnthropicBrain` / `MockBrain`). The film path still calls `complete()` with no temperature (adaptive thinking). The writer path passes temperature and a seed so two clicks are not identical. `MockBrain` detects the `SCRIPTY_WRITER` marker and emits seed-varied original prose.
+Persistence is additive SQLite tables (`write_desks`, `write_sessions`, `write_drafts`, `write_verdicts`, `write_lessons`, `write_refs`) on the same database as the film stack. Live fiction uses `XaiBrain` (`grok-4.6`, `reasoning_effort=xhigh`, `https://api.x.ai/v1`) when `XAI_API_KEY` is set. `AnthropicBrain` remains for the legacy film/distill path. `MockBrain` is the pytest twin: it detects `SCRIPTY_WRITER` and emits seed-varied original prose. Challenger generates roll a new seed, a higher temperature, and a combined prose+plan mutation so randomness is exploration, not decoration.
 
 The dashboard at `/` is the pairwise compare UI. `/film` is the legacy supervisor.
 

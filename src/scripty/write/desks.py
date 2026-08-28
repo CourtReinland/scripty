@@ -1,8 +1,6 @@
 """Genre desks: one 'AI author' per genre, with a style card in our words.
 
-Cards are tropes, beat shapes, and tone notes — never verbatim prose from
-a living author's books. Mentions of well-known writers are tone hints,
-not a corpus.
+Cards are tropes, beat shapes, and tone notes — never verbatim prose.
 """
 from __future__ import annotations
 
@@ -20,15 +18,12 @@ DESKS: tuple[DeskSpec, ...] = (
     {
         "slug": "horror",
         "name": "Short Horror Desk",
-        "hint": "Quiet dread in ordinary rooms. (A King-ish small-town unease "
-                "is a tone hint, not a reading list.)",
+        "hint": "Quiet dread in ordinary rooms.",
         "style_card": (
             "Prefer a recognizable place that starts to refuse the character. "
             "Make the threat specific and physical before it is metaphysical. "
-            "Keep sentences close to the body — breath, hands, a door that "
-            "should stay shut. Delay explanation. Spend the page on what the "
-            "character notices and what they refuse to notice. End a beat on "
-            "an unfinished action, not a thesis."
+            "Keep sentences close to the body. Delay explanation. End a beat "
+            "on an unfinished action, not a thesis."
         ),
     },
     {
@@ -38,41 +33,8 @@ DESKS: tuple[DeskSpec, ...] = (
         "style_card": (
             "Let a small social or private pressure carry the plot. Privilege "
             "concrete nouns over abstract mood. Allow dialogue to miss the "
-            "point the speaker meant. Do not announce theme. A scene earns "
-            "its keep when a relationship cannot return to the previous room."
-        ),
-    },
-    {
-        "slug": "science_fiction",
-        "name": "Science Fiction Desk",
-        "hint": "A changed rule of the world, lived in rather than lectured.",
-        "style_card": (
-            "Invent one pressure (a law, a scarcity, a tool) and let people "
-            "collide with it. Show the world through errands and work, not "
-            "tour-guide paragraphs. Keep the speculative idea answerable to "
-            "a human cost in this scene. Avoid gadget catalogs."
-        ),
-    },
-    {
-        "slug": "fantasy",
-        "name": "Fantasy Desk",
-        "hint": "Wonder with weight; magic that costs something.",
-        "style_card": (
-            "Treat the strange as local weather: someone already lives here. "
-            "Give wonder a bill — time, loyalty, a body, a name. Prefer one "
-            "vivid custom over a map dump. Let the character want something "
-            "ordinary (home, a debt paid) inside the marvelous."
-        ),
-    },
-    {
-        "slug": "mystery",
-        "name": "Mystery Desk",
-        "hint": "A question that rearranges the room as facts arrive.",
-        "style_card": (
-            "Open with a disturbance that cannot be ignored. Plant facts the "
-            "reader can hold, not red herrings that insult them. Let each "
-            "beat change what a character can safely believe. Clues should "
-            "be visible in retrospect. Keep the investigator fallible."
+            "point the speaker meant. A scene earns its keep when a "
+            "relationship cannot return to the previous room."
         ),
     },
     {
@@ -82,9 +44,65 @@ DESKS: tuple[DeskSpec, ...] = (
         "style_card": (
             "Give each person a life that does not exist only for the other. "
             "The obstacle should be a value or a history, not a calendar "
-            "glitch. Charge small gestures. Let the turning point be a "
-            "choice, not a coincidence. Desire is specific; banter is not "
-            "the whole engine."
+            "glitch. Charge small gestures. Let the turning point be a choice."
+        ),
+    },
+    {
+        "slug": "thriller",
+        "name": "Thriller Desk",
+        "hint": "A clock, a pursuit, and information that arrives too late.",
+        "style_card": (
+            "Start after the mistake. Keep the next danger closer than the "
+            "explanation. Trade information for time. Let competence fail in "
+            "a specific way. End a beat on a door that should not open."
+        ),
+    },
+    {
+        "slug": "slice_of_life",
+        "name": "Slice-of-Life Desk",
+        "hint": "Ordinary hours that still change someone.",
+        "style_card": (
+            "Stay with errands, weather, and the sentence someone almost says. "
+            "Plot is a shift in what can be said at the table. Prefer one "
+            "true object over a speech. Do not force a twist."
+        ),
+    },
+    {
+        "slug": "science_fiction",
+        "name": "Science Fiction Desk",
+        "hint": "A changed rule of the world, lived in rather than lectured.",
+        "style_card": (
+            "Invent one pressure and let people collide with it. Show the "
+            "world through work, not a tour. Keep the idea answerable to a "
+            "human cost in this scene."
+        ),
+    },
+    {
+        "slug": "custom",
+        "name": "Generic / Custom Desk",
+        "hint": "No house style — learn only from your verdicts and uploads.",
+        "style_card": (
+            "Honor the session tone and summary. Prefer concrete scenes. "
+            "Do not imitate a named living author. Learn from this desk's "
+            "human Better/Worse record."
+        ),
+    },
+    {
+        "slug": "fantasy",
+        "name": "Fantasy Desk",
+        "hint": "Wonder with weight; magic that costs something.",
+        "style_card": (
+            "Treat the strange as local weather. Give wonder a bill. Prefer "
+            "one vivid custom over a map dump."
+        ),
+    },
+    {
+        "slug": "mystery",
+        "name": "Mystery Desk",
+        "hint": "A question that rearranges the room as facts arrive.",
+        "style_card": (
+            "Open with a disturbance. Plant facts the reader can hold. Let "
+            "each beat change what a character can safely believe."
         ),
     },
 )
@@ -93,8 +111,7 @@ DESK_BY_SLUG: dict[str, DeskSpec] = {d["slug"]: d for d in DESKS}
 
 LENGTHS = ("short", "medium", "long")
 
-#: prompt mutations — one is rolled every generate so the challenger is
-#: a real alternative, not a paraphrase with different adjectives.
+#: prose-level mutations — one is rolled every generate
 MUTATIONS: tuple[str, ...] = (
     "Open on a concrete object, not weather or time of day.",
     "Slow the first paragraph; delay the reveal by a few breaths.",
@@ -106,6 +123,18 @@ MUTATIONS: tuple[str, ...] = (
     "Raise the cost of staying in this room.",
     "Let a secondary presence (neighbor, animal, radio) interrupt once.",
     "Swap the order: consequence first, then the choice that caused it.",
+)
+
+#: beat-plan mutations — how the system explores a genre it does not know yet
+PLAN_MOVES: tuple[str, ...] = (
+    "Start later; skip the walk-up to the room.",
+    "Hold one character's limited knowledge; no omniscient aside.",
+    "Want, then obstacle, then a small irreversible cost.",
+    "Let the first spoken line be about the wrong subject.",
+    "Compress the middle; spend words on the last image.",
+    "Widen to a second location for one paragraph, then return.",
+    "Keep time linear; no flashback this pass.",
+    "Tell it closer to dusk than to explanation.",
 )
 
 
@@ -122,8 +151,13 @@ def normalize_genre(genre: str) -> str:
         "sf": "science_fiction",
         "lit": "literary",
         "scary": "horror",
+        "short_horror": "horror",
         "whodunnit": "mystery",
         "whodunit": "mystery",
+        "generic": "custom",
+        "general": "custom",
+        "other": "custom",
+        "sliceoflife": "slice_of_life",
     }
     slug = aliases.get(slug, slug)
     if slug not in DESK_BY_SLUG:
