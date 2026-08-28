@@ -108,7 +108,7 @@ Writer tests use a tiny original fixture sentence — not a corpus. They cover f
 | `SCRIPTY_WRITER_MODEL` | `grok-4.6` | xAI model id for fiction |
 | `SCRIPTY_WRITER_REASONING_EFFORT` | `xhigh` | max reasoning (`low`/`medium`/`high`/`xhigh`) |
 | `XAI_BASE_URL` | `https://api.x.ai/v1` | xAI API root |
-| `SCRIPTY_PROVIDER` | auto (`xai` if `XAI_API_KEY`, else Anthropic if present, else `mock`) | Writer brain; film vision still uses Anthropic/mock |
+| `SCRIPTY_PROVIDER` | auto (`xai` if `XAI_API_KEY`, else `mock`) | Writer prose never uses Claude. `mock` keeps pytest offline. Film vision still uses Anthropic/mock |
 | `SCRIPTY_TEXT_MODEL` | `claude-opus-4-8` | Claude model for the legacy film/distill path |
 | `SCRIPTY_PORT` | `8787` | Dashboard port |
 

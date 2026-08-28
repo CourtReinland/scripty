@@ -42,6 +42,30 @@ WRITER_MODEL = os.environ.get("SCRIPTY_WRITER_MODEL", "grok-4.6")
 WRITER_REASONING_EFFORT = os.environ.get("SCRIPTY_WRITER_REASONING_EFFORT", "xhigh")
 XAI_BASE_URL = os.environ.get("XAI_BASE_URL", "https://api.x.ai/v1")
 
+#: older Grok ids, plus Claude — never used for champion/challenger prose
+_BLOCKED_WRITER_MODELS = frozenset({
+    "grok-2", "grok-3", "grok-4", "grok-4.5",
+})
+
+
+def writer_model() -> str:
+    """Live fiction model. Default grok-4.6; refuse older Grok / Claude ids."""
+    raw = (os.environ.get("SCRIPTY_WRITER_MODEL") or "grok-4.6").strip()
+    lowered = raw.lower()
+    if (not raw or lowered in _BLOCKED_WRITER_MODELS
+            or lowered.startswith("claude") or lowered.startswith("grok-2")
+            or lowered.startswith("grok-3")):
+        return "grok-4.6"
+    return raw
+
+
+def writer_reasoning_effort() -> str:
+    """Always send an effort. Empty/unknown → xhigh, never the API's 'high'."""
+    raw = (os.environ.get("SCRIPTY_WRITER_REASONING_EFFORT") or "xhigh").strip().lower()
+    if raw not in ("low", "medium", "high", "xhigh"):
+        return "xhigh"
+    return raw
+
 SCENE_THRESHOLD = float(os.environ.get("SCRIPTY_SCENE_THRESHOLD", "0.30"))
 FRAMES_PER_SHOT = int(os.environ.get("SCRIPTY_FRAMES_PER_SHOT", "3"))
 MIN_SHOT_SECONDS = float(os.environ.get("SCRIPTY_MIN_SHOT_SECONDS", "0.40"))
@@ -78,13 +102,16 @@ def default_provider() -> str:
 
 
 def default_writer_provider() -> str:
-    """Live fiction: xAI grok-4.6 when ``XAI_API_KEY`` is set."""
-    forced = os.environ.get("SCRIPTY_PROVIDER")
-    if forced:
-        return forced
-    if _xai_credentials_present():
+    """Champion/challenger prose: xAI when a key is present, else mock.
+
+    Never Anthropic/Claude. ``SCRIPTY_PROVIDER=mock`` keeps pytest offline.
+    """
+    forced = (os.environ.get("SCRIPTY_PROVIDER") or "").strip().lower()
+    if forced in ("mock", "none"):
+        return "mock"
+    if _xai_credentials_present() or forced in ("xai", "grok"):
         return "xai"
-    return "anthropic" if _anthropic_credentials_present() else "mock"
+    return "mock"
 
 
 def default_transcriber() -> str:

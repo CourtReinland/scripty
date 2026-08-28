@@ -256,7 +256,7 @@ def test_xai_brain_pins_grok_46_and_xhigh(monkeypatch):
                 "choices": [{"message": {"content": "a grok draft"}}],
             }).encode()
 
-    def fake_urlopen(request, timeout=180):
+    def fake_urlopen(request, timeout=3600):
         captured["url"] = request.full_url
         captured["body"] = json.loads(request.data.decode())
         captured["auth"] = request.get_header("Authorization")
@@ -276,6 +276,69 @@ def test_xai_brain_pins_grok_46_and_xhigh(monkeypatch):
     assert captured["body"]["temperature"] == 0.9
     assert "seed 3" in captured["body"]["messages"][1]["content"]
     assert captured["auth"] == "Bearer test-key"
+
+
+def test_writer_defaults_never_silently_use_high_or_old_grok(monkeypatch):
+    monkeypatch.delenv("SCRIPTY_WRITER_MODEL", raising=False)
+    monkeypatch.delenv("SCRIPTY_WRITER_REASONING_EFFORT", raising=False)
+    assert config.writer_model() == "grok-4.6"
+    assert config.writer_reasoning_effort() == "xhigh"
+    monkeypatch.setenv("SCRIPTY_WRITER_REASONING_EFFORT", "")
+    assert config.writer_reasoning_effort() == "xhigh"
+    monkeypatch.setenv("SCRIPTY_WRITER_REASONING_EFFORT", "banana")
+    assert config.writer_reasoning_effort() == "xhigh"
+    for old in ("grok-2", "grok-3", "grok-4", "grok-4.5", "claude-opus-4-8"):
+        monkeypatch.setenv("SCRIPTY_WRITER_MODEL", old)
+        assert config.writer_model() == "grok-4.6"
+
+
+def test_default_writer_provider_is_xai_or_mock_never_anthropic(monkeypatch):
+    monkeypatch.delenv("SCRIPTY_PROVIDER", raising=False)
+    monkeypatch.delenv("XAI_API_KEY", raising=False)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-not-for-prose")
+    assert config.default_writer_provider() == "mock"
+    monkeypatch.setenv("XAI_API_KEY", "xai-key")
+    assert config.default_writer_provider() == "xai"
+    monkeypatch.setenv("SCRIPTY_PROVIDER", "anthropic")
+    assert config.default_writer_provider() == "xai"
+    monkeypatch.setenv("SCRIPTY_PROVIDER", "mock")
+    assert config.default_writer_provider() == "mock"
+
+
+def test_generate_uses_xai_even_if_session_says_anthropic(tmp_path, monkeypatch):
+    from scripty.core.db import Database
+    from scripty.write import generate, start_session
+
+    captured: dict = {}
+
+    class FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({
+                "choices": [{"message": {"content": "Grok wrote this draft."}}],
+            }).encode()
+
+    def fake_urlopen(request, timeout=3600):
+        captured["body"] = json.loads(request.data.decode())
+        return FakeResp()
+
+    monkeypatch.setenv("XAI_API_KEY", "test-key")
+    monkeypatch.setenv("SCRIPTY_HOME", str(tmp_path / "home"))
+    monkeypatch.delenv("SCRIPTY_PROVIDER", raising=False)
+    monkeypatch.setattr("scripty.brain.urllib.request.urlopen", fake_urlopen)
+    db = Database(tmp_path / "w.db")
+    view = start_session(db, genre="thriller", tone="tight", length="short",
+                         summary="A key is already lost.", provider="anthropic")
+    out = generate(db, int(view["session"]["id"]))
+    db.close()
+    assert captured["body"]["model"] == "grok-4.6"
+    assert captured["body"]["reasoning_effort"] == "xhigh"
+    assert "Grok wrote this draft." in out["champion"]["text"]
 
 
 def test_anthropic_brain_wraps_typed_errors():

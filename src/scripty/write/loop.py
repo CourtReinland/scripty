@@ -17,8 +17,15 @@ from scripty.write.style import contrast_to_digest, digest, scrub_draft
 
 
 def _brain(name: str | None) -> TextBrain:
+    """Prose brain: mock for tests/offline; otherwise grok-4.6 + xhigh.
+
+    Anthropic is never used for champion/challenger generation.
+    """
+    resolved = (name or config.default_writer_provider() or "mock").strip().lower()
+    if resolved in ("mock", "none", ""):
+        return get_brain("mock")
     try:
-        return get_brain(name or config.default_writer_provider())
+        return get_brain("xai")
     except Exception:
         return get_brain("mock")
 

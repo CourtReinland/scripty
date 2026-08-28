@@ -92,8 +92,8 @@ class XaiBrain:
                  reasoning_effort: str | None = None,
                  api_key: str | None = None,
                  base_url: str | None = None):
-        self.model = model or config.WRITER_MODEL
-        self.reasoning_effort = reasoning_effort or config.WRITER_REASONING_EFFORT
+        self.model = model or config.writer_model()
+        self.reasoning_effort = reasoning_effort or config.writer_reasoning_effort()
         self.api_key = api_key if api_key is not None else os.environ.get("XAI_API_KEY", "")
         self.base_url = (base_url or config.XAI_BASE_URL).rstrip("/")
 
@@ -127,7 +127,7 @@ class XaiBrain:
             },
         )
         try:
-            with urllib.request.urlopen(request, timeout=180) as resp:
+            with urllib.request.urlopen(request, timeout=3600) as resp:
                 raw = resp.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")[:400]
