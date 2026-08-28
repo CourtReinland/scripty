@@ -146,6 +146,74 @@ CREATE TABLE IF NOT EXISTS artifacts (
 CREATE INDEX IF NOT EXISTS idx_shots_pass ON shots(pass_id, idx);
 CREATE INDEX IF NOT EXISTS idx_corrections_proj ON corrections(project_id, field);
 CREATE INDEX IF NOT EXISTS idx_lessons_field ON lessons(field, active);
+
+CREATE TABLE IF NOT EXISTS write_desks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    hint TEXT NOT NULL DEFAULT '',
+    style_card TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS write_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    desk_id INTEGER NOT NULL REFERENCES write_desks(id),
+    genre TEXT NOT NULL,
+    tone TEXT NOT NULL,
+    length TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    unit_index INTEGER NOT NULL DEFAULT 1,
+    unit_kind TEXT NOT NULL DEFAULT 'story',
+    champion_id INTEGER,
+    challenger_id INTEGER,
+    provider TEXT NOT NULL DEFAULT 'mock',
+    status TEXT NOT NULL DEFAULT 'active',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS write_drafts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL REFERENCES write_sessions(id),
+    unit_index INTEGER NOT NULL DEFAULT 1,
+    role TEXT NOT NULL,
+    text TEXT NOT NULL,
+    seed INTEGER NOT NULL,
+    temperature REAL NOT NULL,
+    mutation TEXT NOT NULL DEFAULT '',
+    parent_id INTEGER,
+    signals TEXT NOT NULL DEFAULT '{}',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS write_verdicts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id INTEGER NOT NULL,
+    desk_id INTEGER NOT NULL,
+    champion_id INTEGER NOT NULL,
+    challenger_id INTEGER NOT NULL,
+    result TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS write_lessons (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    desk_id INTEGER NOT NULL,
+    rule TEXT NOT NULL,
+    source_verdict_ids TEXT NOT NULL DEFAULT '[]',
+    weight REAL NOT NULL DEFAULT 1.0,
+    active INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS write_refs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    desk_id INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    text TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_write_sessions_desk ON write_sessions(desk_id);
+CREATE INDEX IF NOT EXISTS idx_write_drafts_session ON write_drafts(session_id, unit_index);
+CREATE INDEX IF NOT EXISTS idx_write_lessons_desk ON write_lessons(desk_id, active);
+CREATE INDEX IF NOT EXISTS idx_write_refs_desk ON write_refs(desk_id);
 """
 
 # columns stored as JSON text, decoded on read
@@ -159,6 +227,8 @@ _JSON_COLS = {
     "describe_prompts": ("continuity",),
     "artifacts": ("meta",),
     "events": ("payload",),
+    "write_drafts": ("signals",),
+    "write_lessons": ("source_verdict_ids",),
 }
 
 
@@ -199,6 +269,8 @@ class Database:
         if "created_at" not in cols and table in (
             "projects", "passes", "corrections", "lessons", "truth_links",
             "alignments", "describe_prompts", "artifacts",
+            "write_desks", "write_sessions", "write_drafts",
+            "write_verdicts", "write_lessons", "write_refs",
         ):
             cols["created_at"] = _now()
         names = ", ".join(cols)

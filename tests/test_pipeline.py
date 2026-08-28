@@ -222,6 +222,23 @@ def test_anthropic_brain_calls_api_with_pinned_params():
         assert banned not in kwargs
 
 
+def test_anthropic_brain_writer_path_passes_temperature():
+    response = SimpleNamespace(
+        stop_reason="end_turn",
+        content=[SimpleNamespace(type="text", text="a draft")])
+    client = mock.Mock()
+    client.messages.create.return_value = response
+    brain = AnthropicBrain()
+    brain._client = client
+    assert brain.complete("sys", "user", temperature=0.88, seed=7,
+                          max_tokens=4000) == "a draft"
+    kwargs = client.messages.create.call_args.kwargs
+    assert kwargs["temperature"] == 0.88
+    assert kwargs["max_tokens"] == 4000
+    assert "thinking" not in kwargs
+    assert "seed 7" in kwargs["messages"][0]["content"]
+
+
 def test_anthropic_brain_wraps_typed_errors():
     import anthropic
     import httpx

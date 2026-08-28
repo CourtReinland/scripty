@@ -1,6 +1,38 @@
 # Architecture
 
-Scripty is a pipeline of ten modules built around a small, frozen **core contract**. Every module that touches an external system (Claude, ffmpeg, whisper) sits behind a `Protocol` and ships a deterministic mock twin, so the whole system runs — and is fully tested — offline.
+The product surface is a **human-in-the-loop fiction trainer** (`scripty.write`). The film script-supervisor remains in the same package as a legacy pipeline.
+
+## Writer loop (current product)
+
+```
+start_session(genre, tone, length, summary)
+        │
+        ▼
+   generate()  → first draft becomes CHAMPION
+        │
+        │  roll seed + temperature + prompt mutation
+        ▼
+   generate()  → CHALLENGER (signals are display-only)
+        │
+        ▼
+   judge(better|worse)   # human is the only scorer
+        │
+        ├─ better → challenger is champion; old champion retired
+        └─ worse  → challenger discarded; champion unchanged
+        │
+        ▼
+   desk lesson distilled from the verdict → recalled on the next generate
+```
+
+Genre desks (`write/desks.py`) are style cards in our own words. Optional references are `user_excerpt` or `public_domain` text the user supplies — never a vendored living-author corpus.
+
+Persistence is additive SQLite tables (`write_desks`, `write_sessions`, `write_drafts`, `write_verdicts`, `write_lessons`, `write_refs`) on the same database as the film stack. The writer reuses `TextBrain` (`AnthropicBrain` / `MockBrain`). The film path still calls `complete()` with no temperature (adaptive thinking). The writer path passes temperature and a seed so two clicks are not identical. `MockBrain` detects the `SCRIPTY_WRITER` marker and emits seed-varied original prose.
+
+The dashboard at `/` is the pairwise compare UI. `/film` is the legacy supervisor.
+
+---
+
+The remainder of this document describes the **legacy film supervisor**: a pipeline of ten modules around a frozen core contract. Every module that touches an external system (Claude, ffmpeg, whisper) sits behind a `Protocol` and ships a deterministic mock twin.
 
 ## Table of contents
 

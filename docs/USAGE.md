@@ -1,6 +1,25 @@
 # Usage
 
-Task-oriented walkthroughs for the common Scripty workflows. All commands assume the venv is active (`source .venv/bin/activate`) and ffmpeg is on your `PATH`.
+## Fiction trainer (current)
+
+```bash
+source .venv/bin/activate
+scripty write start -g horror -t "quiet dread" -l short \
+  -s "A lighthouse keeper finds smaller footprints on the stairs each morning."
+scripty write generate 1
+scripty write judge 1 better --note "colder"
+scripty serve    # http://127.0.0.1:8787/
+```
+
+In the UI: start a session, read the champion, generate a challenger, click Better or Worse. Signals on the cards are advisory. Paste only public-domain text or excerpts you have rights to.
+
+Medium/long sessions write chapter 1 first; `scripty write next ID` (or **Next chapter** in the UI) starts the next unit after you are happy with the champion.
+
+---
+
+## Legacy film supervisor
+
+Task-oriented walkthroughs for the older film pipeline. ffmpeg must be on your `PATH`.
 
 ## Table of contents
 

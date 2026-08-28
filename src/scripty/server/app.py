@@ -1,8 +1,7 @@
-"""FastAPI dashboard + JSON API — the face of the machine script supervisor.
+"""FastAPI app: writer loop at `/`, legacy film supervisor at `/film`.
 
-`create_app` wires a single `Database` into a set of read endpoints (projects,
-passes, shots, script, prompts, alignment, metrics), the correction/lesson
-write endpoints that drive the learning loop, and two guarded media routes.
+`create_app` wires a single `Database` into the writer API, the film
+read/correction endpoints, and two guarded media routes.
 """
 from __future__ import annotations
 
@@ -140,7 +139,9 @@ def create_app(db_path: Path | str | None = None) -> FastAPI:
         return await call_next(request)
 
     from scripty.server.ingest_api import router as ingest_router
+    from scripty.server.write_api import write_router
     app.include_router(ingest_router)
+    app.include_router(write_router(db))
 
     # ---- lookups that 404 --------------------------------------------------
 
@@ -298,10 +299,14 @@ def create_app(db_path: Path | str | None = None) -> FastAPI:
         return FileResponse(target,
                             media_type=_guess_media_type(target, "image/jpeg"))
 
-    # ---- dashboard ---------------------------------------------------------
+    # ---- dashboards --------------------------------------------------------
 
     @app.get("/", include_in_schema=False)
-    def index() -> FileResponse:
+    def writer_index() -> FileResponse:
+        return FileResponse(STATIC_DIR / "write.html", media_type="text/html")
+
+    @app.get("/film", include_in_schema=False)
+    def film_index() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html", media_type="text/html")
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")

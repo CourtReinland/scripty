@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scripty — fiction trainer</title>
+  <link rel="stylesheet" href="/static/write.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="mark">SCRIPTY</span>
+      <span class="sub">fiction trainer</span>
+    </div>
+    <p class="rule">You are the only judge. Signals are notes, not scores.</p>
+    <a class="legacy" href="/film">Film supervisor (legacy)</a>
+  </header>
+
+  <main>
+    <section class="start card" id="startCard">
+      <h1>Start a session</h1>
+      <form id="startForm">
+        <div class="row">
+          <label>Genre desk
+            <select id="genre" name="genre"></select>
+          </label>
+          <label>Tone
+            <input id="tone" name="tone" value="quiet dread" maxlength="80">
+          </label>
+          <label>Length
+            <select id="length" name="length">
+              <option value="short" selected>short — complete piece</option>
+              <option value="medium">medium — chapter by chapter</option>
+              <option value="long">long — chapter by chapter</option>
+            </select>
+          </label>
+        </div>
+        <label>Story summary
+          <textarea id="summary" name="summary" rows="5" required
+            placeholder="A lighthouse keeper finds a second set of footprints on the stairs every morning, always one size smaller than his own."></textarea>
+        </label>
+        <p class="hint" id="deskHint"></p>
+        <button type="submit" id="startBtn">Write first draft</button>
+      </form>
+    </section>
+
+    <section class="session hidden" id="sessionPane">
+      <div class="session-bar">
+        <div>
+          <h2 id="sessionTitle">Session</h2>
+          <p class="hint" id="sessionMeta"></p>
+        </div>
+        <div class="actions">
+          <button type="button" id="generateBtn">Generate challenger</button>
+          <button type="button" id="nextBtn" class="ghost hidden">Next chapter</button>
+          <button type="button" id="newSessionBtn" class="ghost">New session</button>
+        </div>
+      </div>
+
+      <div class="compare">
+        <article class="draft card" id="champCard">
+          <header>
+            <h3>Champion</h3>
+            <p class="meta" id="champMeta"></p>
+          </header>
+          <pre class="prose" id="champText"></pre>
+        </article>
+        <article class="draft card" id="challCard">
+          <header>
+            <h3>Challenger</h3>
+            <p class="meta" id="challMeta"></p>
+          </header>
+          <pre class="prose" id="challText"></pre>
+          <div class="verdict hidden" id="verdictBar">
+            <button type="button" id="worseBtn" class="worse">Worse — keep champion</button>
+            <button type="button" id="betterBtn" class="better">Better — promote challenger</button>
+          </div>
+          <label class="note-label">Optional note for the desk
+            <input id="verdictNote" maxlength="240" placeholder="too explanatory / liked the colder opening">
+          </label>
+        </article>
+      </div>
+
+      <div class="side-by">
+        <section class="card">
+          <h3>Champion history</h3>
+          <ol id="history" class="history"></ol>
+        </section>
+        <section class="card">
+          <h3>Desk lessons</h3>
+          <ul id="lessons" class="lessons"></ul>
+          <form id="refForm" class="ref-form">
+            <h4>Add a reference you have rights to</h4>
+            <p class="hint">Public-domain text or a short excerpt you own. Not a living author’s novel.</p>
+            <div class="row">
+              <label>Kind
+                <select id="refKind">
+                  <option value="user_excerpt">user excerpt</option>
+                  <option value="public_domain">public domain</option>
+                </select>
+              </label>
+              <label>Title
+                <input id="refTitle" required maxlength="80">
+              </label>
+            </div>
+            <textarea id="refText" rows="4" required></textarea>
+            <button type="submit" class="ghost">Store on this desk</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <p id="status" class="status" role="status"></p>
+  </main>
+
+  <script src="/static/write.js"></script>
+</body>
+</html>

@@ -1,8 +1,7 @@
 """Typer command-line interface for Scripty (`scripty <command>`).
 
-Heavy modules (server, truth, compare, script) are imported inside command
-bodies so `scripty --help` stays fast and the CLI works while sibling
-modules are still being built.
+The product surface is the human-in-the-loop writer (`scripty write`).
+Film supervisor commands remain as a legacy toolkit.
 """
 from __future__ import annotations
 
@@ -17,9 +16,11 @@ from scripty.core import config
 from scripty.core.db import Database
 
 app = typer.Typer(no_args_is_help=True, add_completion=False,
-                  help="Scripty - a machine script supervisor.")
-lessons_app = typer.Typer(no_args_is_help=True, help="Distill and inspect lessons.")
-describe_app = typer.Typer(no_args_is_help=True, help="Describe-track prompt tools.")
+                  help="Scripty — a human-in-the-loop fiction trainer.")
+lessons_app = typer.Typer(no_args_is_help=True, help="Distill and inspect film-supervisor lessons.")
+describe_app = typer.Typer(no_args_is_help=True, help="Describe-track prompt tools (legacy film).")
+write_app = typer.Typer(no_args_is_help=True, help="Start and judge fiction drafts.")
+app.add_typer(write_app, name="write")
 app.add_typer(lessons_app, name="lessons")
 app.add_typer(describe_app, name="describe")
 
@@ -64,12 +65,220 @@ def run_pass_cmd(project_id: int,
 @app.command()
 def serve(port: int = typer.Option(config.SERVER_PORT, "--port"),
           host: str = typer.Option("127.0.0.1", "--host")) -> None:
-    """Start the dashboard server."""
+    """Start the writer dashboard (film supervisor at /film)."""
     import uvicorn
     from scripty.server.app import create_app
 
-    typer.echo(f"dashboard on http://{host}:{port}/")
+    typer.echo(f"writer on http://{host}:{port}/   (legacy film at /film)")
     uvicorn.run(create_app(), host=host, port=port)
+
+
+def _preview(text: str, limit: int = 700) -> str:
+    body = (text or "").strip()
+    return body if len(body) <= limit else body[:limit].rstrip() + "\n…"
+
+
+def _print_session(view: dict) -> None:
+    session = view["session"]
+    desk = view.get("desk") or {}
+    typer.echo(
+        f"session {session['id']}  desk={desk.get('slug')}  "
+        f"tone={session['tone']!r}  length={session['length']}  "
+        f"unit={session['unit_kind']} {session['unit_index']}")
+    champ = view.get("champion")
+    chall = view.get("challenger")
+    if champ:
+        sig = champ.get("signals") or {}
+        typer.echo(f"\nCHAMPION  #{champ['id']}  words={sig.get('word_count')}  "
+                   f"seed={champ['seed']}  mutation={champ.get('mutation')}")
+        typer.echo(_preview(champ["text"]))
+    else:
+        typer.echo("\nCHAMPION  (none yet — run `scripty write generate "
+                   f"{session['id']}`)")
+    if chall:
+        sig = chall.get("signals") or {}
+        typer.echo(f"\nCHALLENGER  #{chall['id']}  words={sig.get('word_count')}  "
+                   f"novelty={sig.get('lexical_novelty')}  "
+                   f"seed={chall['seed']}  mutation={chall.get('mutation')}")
+        notes = sig.get("notes") or []
+        if notes:
+            typer.echo("signals (advisory): " + "; ".join(notes))
+        typer.echo(_preview(chall["text"]))
+        typer.echo(f"\njudge:  scripty write judge {session['id']} better|worse")
+    elif champ:
+        typer.echo(f"\nnext:  scripty write generate {session['id']}")
+
+
+@write_app.command("start")
+def write_start(
+    genre: str = typer.Option(..., "--genre", "-g",
+                              help="horror, literary, science_fiction, fantasy, mystery, romance"),
+    tone: str = typer.Option("measured", "--tone", "-t"),
+    length: str = typer.Option("short", "--length", "-l",
+                               help="short (complete piece) | medium | long (chapters)"),
+    summary: str = typer.Option(..., "--summary", "-s"),
+    provider: Optional[str] = typer.Option(None, "--provider"),
+    draft: bool = typer.Option(True, "--draft/--no-draft",
+                               help="Generate the first draft immediately"),
+) -> None:
+    """Open a session on a genre desk and (by default) write the first draft."""
+    from scripty.write import generate, start_session
+
+    db = _db()
+    try:
+        view = start_session(db, genre=genre, tone=tone, length=length,
+                             summary=summary, provider=provider)
+        if draft:
+            view = generate(db, int(view["session"]["id"]))
+    except ValueError as exc:
+        raise _fail(str(exc))
+    _print_session(view)
+
+
+@write_app.command("generate")
+def write_generate(session_id: int) -> None:
+    """Write the first draft, or a randomized challenger against the champion."""
+    from scripty.write import generate
+
+    db = _db()
+    try:
+        view = generate(db, session_id)
+    except (ValueError, RuntimeError) as exc:
+        raise _fail(str(exc))
+    _print_session(view)
+
+
+@write_app.command("judge")
+def write_judge(
+    session_id: int,
+    result: str = typer.Argument(..., help="better | worse"),
+    note: str = typer.Option("", "--note", "-n"),
+) -> None:
+    """You are the only judge. better promotes the challenger; worse discards it."""
+    from scripty.write import judge
+
+    db = _db()
+    try:
+        view = judge(db, session_id, result, note=note)
+    except ValueError as exc:
+        raise _fail(str(exc))
+    typer.echo(f"verdict: {result}")
+    _print_session(view)
+
+
+@write_app.command("show")
+def write_show(session_id: int) -> None:
+    """Print champion, pending challenger, and desk lessons."""
+    from scripty.write import session_view
+
+    db = _db()
+    try:
+        view = session_view(db, session_id)
+    except ValueError as exc:
+        raise _fail(str(exc))
+    _print_session(view)
+    lessons = view.get("lessons") or []
+    if lessons:
+        typer.echo("\nDESK LESSONS")
+        for row in lessons:
+            typer.echo(f"  - {row.get('rule')}")
+
+
+@write_app.command("history")
+def write_history(session_id: int) -> None:
+    """List champion lineage for the current unit."""
+    from scripty.write import session_view
+
+    db = _db()
+    try:
+        view = session_view(db, session_id)
+    except ValueError as exc:
+        raise _fail(str(exc))
+    rows = view.get("history") or []
+    if not rows:
+        typer.echo("no champions yet")
+        return
+    for row in rows:
+        sig = row.get("signals") or {}
+        typer.echo(
+            f"#{row['id']}  {row['role']:9}  words={sig.get('word_count')}  "
+            f"seed={row['seed']}  {row.get('created_at', '')}")
+
+
+@write_app.command("lessons")
+def write_lessons(genre: str = typer.Option(..., "--genre", "-g")) -> None:
+    """List lessons saved on a genre desk."""
+    from scripty.write import normalize_genre
+    from scripty.write.store import desk_by_slug, lessons_for_desk
+
+    db = _db()
+    try:
+        desk = desk_by_slug(db, normalize_genre(genre))
+    except ValueError as exc:
+        raise _fail(str(exc))
+    rows = lessons_for_desk(db, int(desk["id"]))
+    if not rows:
+        typer.echo(f"no lessons on the {desk['slug']} desk yet")
+        return
+    for row in rows:
+        typer.echo(f"[{row['id']}] {row['rule']}")
+
+
+@write_app.command("ref")
+def write_ref(
+    genre: str = typer.Option(..., "--genre", "-g"),
+    kind: str = typer.Option(..., "--kind", help="user_excerpt | public_domain"),
+    title: str = typer.Option(..., "--title"),
+    text: Optional[str] = typer.Option(None, "--text"),
+    file: Optional[Path] = typer.Option(None, "--file"),
+) -> None:
+    """Attach a rights-cleared excerpt to a desk (never scrape living authors)."""
+    from scripty.write import add_reference
+
+    body = text
+    if file is not None:
+        path = Path(file).expanduser()
+        if not path.is_file():
+            raise _fail(f"file not found: {path}")
+        body = path.read_text(encoding="utf-8")
+    if not (body or "").strip():
+        raise _fail("provide --text or --file")
+    db = _db()
+    try:
+        info = add_reference(db, desk_slug=genre, kind=kind, title=title,
+                             text=body or "")
+    except ValueError as exc:
+        raise _fail(str(exc))
+    typer.echo(f"stored ref {info['id']} on {info['desk']} ({info['kind']})")
+
+
+@write_app.command("next")
+def write_next(session_id: int) -> None:
+    """Advance to the next chapter (medium/long sessions)."""
+    from scripty.write import advance
+
+    db = _db()
+    try:
+        view = advance(db, session_id)
+    except (ValueError, RuntimeError) as exc:
+        raise _fail(str(exc))
+    _print_session(view)
+
+
+@write_app.command("list")
+def write_list() -> None:
+    """Recent writing sessions."""
+    from scripty.write import list_sessions
+
+    rows = list_sessions(_db())
+    if not rows:
+        typer.echo("no sessions yet")
+        return
+    for row in rows:
+        typer.echo(
+            f"{row['id']:>4}  {row.get('desk_slug', row['genre']):16}  "
+            f"{row['length']:6}  {row['status']:7}  "
+            f"{(row['summary'] or '')[:60]}")
 
 
 @app.command()

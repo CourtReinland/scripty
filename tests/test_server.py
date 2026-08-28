@@ -98,8 +98,13 @@ def test_index_and_static_served(client: TestClient) -> None:
     assert res.status_code == 200
     assert "text/html" in res.headers["content-type"]
     assert "SCRIPTY" in res.text
+    assert "fiction trainer" in res.text
+    assert client.get("/static/write.js").status_code == 200
     assert client.get("/static/app.js").status_code == 200
     assert client.get("/static/style.css").status_code == 200
+    film = client.get("/film")
+    assert film.status_code == 200
+    assert "machine script supervisor" in film.text
 
 
 # ---- projects / passes ------------------------------------------------------
@@ -319,7 +324,7 @@ def test_quad_static_assets_served(client: TestClient) -> None:
 
 
 def test_index_references_quad_assets(client: TestClient) -> None:
-    html = client.get("/").text
+    html = client.get("/film").text
     assert "/static/quad.js" in html
     assert "/static/quad.css" in html
     assert 'id="quadLayout"' in html
@@ -330,7 +335,7 @@ def test_fountain_classifier_asset_served(client: TestClient) -> None:
     res = client.get("/static/fountain.js")
     assert res.status_code == 200
     assert "scriptyFountain" in res.text
-    assert "/static/fountain.js" in client.get("/").text
+    assert "/static/fountain.js" in client.get("/film").text
 
 
 # ---- local-only guards (Host / Origin) ----------------------------------------
