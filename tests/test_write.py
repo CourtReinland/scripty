@@ -81,6 +81,9 @@ def test_better_promotes_challenger(db):
     roles = {d["id"]: d["role"] for d in judged["history"]}
     assert roles[champ_id] == "retired"
     assert roles[chall_id] == "champion"
+    notes = " ".join((judged["champion"].get("signals") or {}).get("notes") or [])
+    assert "shorter" not in notes
+    assert "first draft" in notes or notes == []
 
 
 def test_worse_keeps_champion(db):

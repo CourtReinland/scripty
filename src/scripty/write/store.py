@@ -48,7 +48,9 @@ def desk_by_slug(db: Database, slug: str) -> dict:
 
 def list_desks(db: Database) -> list[dict]:
     ensure_desks(db)
-    return db.rows("SELECT * FROM write_desks ORDER BY slug")
+    rows = db.rows("SELECT * FROM write_desks")
+    order = {spec["slug"]: i for i, spec in enumerate(DESKS)}
+    return sorted(rows, key=lambda r: order.get(r["slug"], 99))
 
 
 def create_session(db: Database, *, desk_id: int, genre: str, tone: str,

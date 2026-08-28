@@ -147,6 +147,10 @@ def judge(db: Database, session_id: int, result: str, *,
     if result == "better":
         store.set_draft_role(db, int(champ["id"]), "retired")
         store.set_draft_role(db, int(chall["id"]), "champion")
+        # Drop challenger-vs-old-champion contrast so the new champ
+        # does not keep "shorter than the champion" notes about itself.
+        db.update("write_drafts", int(chall["id"]),
+                  signals=measure(chall["text"], None))
         store.update_session(db, session_id, champion_id=int(chall["id"]),
                              challenger_id=None)
     else:

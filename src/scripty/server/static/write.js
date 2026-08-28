@@ -32,7 +32,8 @@
       opt.textContent = d.name;
       sel.appendChild(opt);
     });
-    if (!sel.value && desks[0]) sel.value = desks[0].slug;
+    const prefer = desks.find((d) => d.slug === "horror") || desks[0];
+    if (prefer) sel.value = prefer.slug;
     updateHint();
   }
 
